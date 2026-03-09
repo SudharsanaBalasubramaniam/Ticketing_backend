@@ -1,0 +1,363 @@
+import React, { useState, useEffect } from "react"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import * as con from '../../repository/api_calls';
+import { useReducer } from 'react';
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from 'react-toastify';
+import { RiEdit2Line } from 'react-icons/ri';
+import { RiDeleteBin2Line } from 'react-icons/ri';
+import './style.css';
+import { Link, useLocation } from "react-router-dom";
+
+
+
+function reducer(state, action) {
+  if (action.type === 'set_value') {
+    state[action.key] = action.value;
+    return {
+      id: state.id,
+      quantity: state.quantity,
+      prescription_subcategory_id: state.prescription_subcategory_id,
+      morning: state.morning,
+      afternoon: state.afternoon,
+      evening: state.evening,
+      night: state.night,
+      before_food: state.before_food,
+      after_food: state.after_food,
+      patient_id: state.patient_id
+    };
+  }
+}
+
+const Prescription = (props) => {
+
+  // const location = useLocation();
+  // const userData = location.state;
+
+  const [state, dispatch] = useReducer(reducer, {
+    id: '', quantity: '', prescription_subcategory_id: '', morning: '', afternoon: '',
+     evening: '', night: '', before_food: '', after_food: '', patient_id: (props.patient_id)
+  })
+
+  const submitAddPrescription = (event) => {
+    event.preventDefault();
+    if (state.id != '') {
+      addPrescription(state, 'edit');
+    } else {
+      addPrescription(state, 'add');
+    }
+    console.log(props.patient_id)
+  }
+
+
+  async function addPrescription(Prescription, type) {
+    if (type == 'add') {
+      const response = await con.AddPrescription((JSON.stringify(Prescription)));
+      console.log(response)
+      if (response['status'] === true) {
+        let afterAdded = [...prescriptionList];
+        afterAdded.push(response['data']);
+        setPrescriptionList(afterAdded);
+        toast.success(response['message'], {
+          position: toast.POSITION.TOP_RIGHT,
+          className: 'foo_bar_log_Success'
+        });
+
+      }
+      else {
+        toast.error(response['message'], {
+          position: toast.POSITION.TOP_RIGHT,
+          className: 'foo_bar_log_error'
+        });
+
+      }
+    } else
+     {
+      const response = await con.UpdatePatientPrescriptAPI((JSON.stringify(Prescription)));
+      console.log(response)
+      if (response['status'] === true) {
+        let afterAdded = prescriptionList.map(item => {
+          if (item.id === state.id) {
+            return response.data;
+          }
+          return item;
+        });
+      
+        dispatch({ type: 'set_value', value: '',  key: 'id' })
+        dispatch({ type: 'set_value', value:'',  key: 'quantity' })
+        dispatch({ type: 'set_value', value: '', key: 'prescription_subcategory_id' })
+        dispatch({ type: 'set_value', value:'',  key: 'morning' })
+        dispatch({ type: 'set_value', value:'',  key: 'afternoon' })
+        dispatch({ type: 'set_value', value: '',  key: 'evening' })
+        dispatch({ type: 'set_value', value:'',  key: 'night' })
+       dispatch({ type: 'set_value', value: '',  key: 'before_food' })
+       dispatch({ type: 'set_value', value: '',  key: 'after_food' })
+       dispatch({ type: 'set_value', value:'',   key: 'patient_id' })
+
+        setPrescriptionList(afterAdded);
+        toast.success(response['message'], {
+          position: toast.POSITION.TOP_RIGHT,
+          className: 'foo_bar_log_Success'
+        });
+      }
+      else {
+        toast.error(response['message'], {
+          position: toast.POSITION.TOP_RIGHT,
+          className: 'foo_bar_log_error'
+        });
+
+      }
+    }
+  }
+  // -----------------------------  add method for dropdown
+
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const handleButtonClick = () => {
+    setDropdownOpen(!isDropdownOpen);
+  };
+
+  //  // ---------------- for edit function -------
+
+   function handleForEditButtonClick( subCat) {
+    
+    setDropdownOpen(true);
+    dispatch({ type: 'set_value', value:subCat.id, key: 'id' })
+    dispatch({ type: 'set_value', value:subCat.quantity, key: 'quantity' })
+    dispatch({ type: 'set_value', value:subCat.prescription_subcategory_id, key: 'prescription_subcategory_id' })
+    dispatch({ type: 'set_value', value:subCat.morning, key: ' morning' })
+    dispatch({ type: 'set_value', value:subCat.afternoon, key: ' afternoon' })
+    dispatch({ type: 'set_value', value:subCat.evening, key: ' evening' })
+    dispatch({ type: 'set_value', value:subCat.night, key: 'night' })
+  dispatch({ type: 'set_value', value:subCat.before_food, key: 'before_food' })
+  dispatch({ type: 'set_value', value:subCat.after_food, key: 'after_food' })
+  dispatch({ type: 'set_value', value:subCat.patient_id, key: 'patient_id' })
+  };
+  // ------------------------------- prescription   list API -----------
+
+  const [prescriptionList, setPrescriptionList] = useState([])
+
+
+  useEffect(() => {
+    getPrescriptionLists();
+  }, [])
+
+  async function getPrescriptionLists(id) {
+    const response = await con.PrescriptionListsAPI();
+    if (response['status'] === true) {
+      setPrescriptionList(response['data']);
+    }
+  }
+
+
+
+  // ------------------prescription drop down list ------------
+  const [presMenuList, setPresMenuList] = React.useState();
+
+  useEffect(() => {
+    getpresmenutype()
+  }, [])
+
+  async function getpresmenutype() {
+    const response = await con.MedicalInventoryListsAPI();
+    console.log(response)
+    if (response['status'] === true) {
+      setPresMenuList(response['data'])
+      dispatch({ type: 'set_value', value: response['data'][0]['id'], key: 'prescription_subcategory_id' });
+    }
+  }
+
+  // ------------------------- Delete API --------
+
+  async function getPatiePrescriptionDelete(deletePatienPresc) {
+    const response = await con.PatientPrescription(deletePatienPresc);
+    console.log(response)
+    if (response['status'] === true) {
+      let afterAdded = prescriptionList.filter(item => item.id !== deletePatienPresc);
+      setPrescriptionList(afterAdded);
+      toast.success(response['message'], {
+        position: toast.POSITION.TOP_RIGHT,
+        className: 'foo_bar_log_Success'
+      });
+    }
+    else {
+      toast.error(response['message'], {
+        position: toast.POSITION.TOP_RIGHT,
+        className: 'foo_bar_log_error'
+      });
+    }
+  }
+
+
+  return (
+    <React.Fragment>
+      <ToastContainer autoClose={3000} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginRight: "10px" }}>
+        < button type="submit"
+          className="btn btn-primary my-5"
+          style={{ width: "auto", backgroundColor: "#5660d9" }}
+          onClick={handleButtonClick}
+        >+ Add Prescription
+        </button>
+      </div>
+      {isDropdownOpen && (
+
+        <div className="prescard_outer" >
+
+          <form onSubmit={submitAddPrescription}>
+
+            <div className="row presrow" >
+              <div className="col-md-3">
+                <label style={{ marginLeft: '30px' }}>Prescription Name</label>
+                <div style={{ marginTop: '10px' }}>
+                  {(presMenuList != null) ?
+                    <select
+                      className="form-select"
+                      style={{ fontSize: 14, height: 44, width: "100%" }}
+                      required
+                      value={state.prescription_subcategory_id}
+                      onChange={(e) => { dispatch({ type: 'set_value', value: e.target.value, key: 'prescription_subcategory_id' }); }}
+                    >
+
+                      {presMenuList.map((list, index) =>
+                        <option value={list['id']}>{list['name']}</option>
+                      )}
+
+                    </select>
+                    : null}
+                </div>
+
+              </div>
+              <div className="col-md-3">
+                <label style={{ display: "block", marginLeft: '30px', marginBottom: '5px' }}>Quantity</label>
+                <div style={{ marginTop: '15px' }}>
+                  <input
+                    type="number"
+                    className="form-control"
+                    style={{ paddingLeft: '15px', width: '100%', height: 44 }}
+                    value={state.quantity}
+                    onChange={(e) => { dispatch({ type: 'set_value', value: e.target.value, key: 'quantity' }); }}
+                  />
+                </div>
+              </div>
+           
+              <div className="col-md-3">
+                <label style={{ marginLeft: '90px' }}>Period</label>
+                <div style={{ display: 'block' }}>
+                  <div style={{ display: "flex", justifyContent: "space-around" }}>
+                    <label className="mt10">Morning</label>
+                    <input
+                      type="checkbox"
+                      value={state.morning}
+                      onChange={(e) => { console.log(e.target.value); dispatch({ type: 'set_value', value: state.morning == "" ? 'M ,' : '', key: 'morning' }); }}
+                    />
+
+                    <label className="mt10">Afternoon</label>
+                    <input
+                      type="checkbox"
+                      value={state.afternoon}
+                      onChange={(e) => { dispatch({ type: 'set_value', value: state.afternoon == "" ? 'A ,' : '', key: 'afternoon' }); }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'block' }}>
+                  <div style={{ display: "flex", justifyContent: "space-around", marginRight: '1px' }}>
+                    <label className="mt10" style={{ marginRight: '2px' }}>Evening</label>
+                    <span style={{ marginRight: '6px', marginTop: '8px' }}>
+                      <input
+                        type="checkbox"
+                        value={state.evening}
+                        onChange={(e) => { dispatch({ type: 'set_value', value: state.evening == "" ? 'E ,' : '', key: 'evening' }); }}
+                      />
+                    </span>
+
+                    <label className="mt10">Night</label>
+                    <span style={{ marginTop: '8px', marginLeft: '24px' }}>
+                      <input
+                        type="checkbox"
+                        value={state.night}
+                        onChange={(e) => { dispatch({ type: 'set_value', value: state.night == "" ? 'N' : '', key: 'night' }); }}
+                      />
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-3">
+                <label style={{ marginLeft: '90px' }}>Initiate</label>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-around" }}>
+
+                    <label className="mt10">After Food</label>
+                    <input
+                      type="checkbox"
+                      value={state.after_food}
+                      onChange={(e) => { dispatch({ type: 'set_value', value: state.after_food == "" ? 'After Food' : '', key: 'after_food' }); }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-around" }}>
+                      <label className="mt10">Before Food</label>
+                      <span style={{ marginRight: '3px', marginTop: '8px' }}>
+                        <input
+                          type="checkbox"
+                          value={state.before_food}
+                          onChange={(e) => { dispatch({ type: 'set_value', value: state.before_food == "" ? 'Before Food' : '', key: 'before_food' }); }}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button className="btn btn-primary presbtn" >
+              Submit
+            </button>
+          </form>
+
+        </div>
+
+      )}
+      <table className="bordered-table mt20">
+        <thead className="tablehead">
+          <tr>
+            <th>S.No</th>
+            <th>Prescription Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Period</th>
+            <th>Initiate</th>
+            <th>Edit</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {prescriptionList.map((plist, index) => (
+            <tr key={index}>
+              <td>{index + 1}</td>
+              <td>{plist.pres_subcategory_name}</td>
+              <td>{plist.quantity}</td>
+              <td>{plist.price}</td>
+              <td>{plist.total_amt}</td>
+              <td><span>{plist.morning}</span><span className="me-2">{plist.afternoon}</span><span className="me-2">{plist.evening}</span><span className="me-2">{plist.night}</span></td>
+              <td><span>{plist.after_food}</span><span>{plist.before_food}</span></td>
+              <td><RiEdit2Line className="edit_icon" onClick={() => handleForEditButtonClick( plist)} /></td>
+              <td>
+                <RiDeleteBin2Line
+                  className="delete_icon"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => getPatiePrescriptionDelete(plist.id)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+    </React.Fragment>
+  )
+}
+
+export default Prescription
